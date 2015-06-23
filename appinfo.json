@@ -1,0 +1,16 @@
+{
+  "uuid": "d0544231-23ea-468f-b984-7948fe004d7f",
+  "shortName": "No Hands",
+  "longName": "No Hands (Analogue Colour)",
+  "companyName": "neon",
+  "versionLabel": "1.1",
+  "sdkVersion": "3",
+  "targetPlatforms": ["basalt"],
+  "watchapp": {
+    "watchface": true
+  },
+  "appKeys": {},
+  "resources": {
+    "media": []
+  }
+}
