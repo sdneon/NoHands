@@ -11,6 +11,18 @@
   },
   "appKeys": {},
   "resources": {
-    "media": []
+    "media": [
+        {
+            "type": "png",
+            "menuIcon": true,
+            "name": "IMAGE_MENU_ICON",
+            "file": "images/logo.png"
+        },
+        {
+          "type": "png",
+          "name": "EXAMPLE_IMAGE",
+          "file": "images/example-image.png"
+        }
+    ]
   }
 }
