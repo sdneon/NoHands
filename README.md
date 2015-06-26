@@ -7,8 +7,8 @@ Inspired by [Chromatick](http://chromatickface.tumblr.com/concept).
 
 ## Display
 1. Hour shown to easily tell time.
-  * White: AM,
-  * Black: PM.
+  * White: PM,
+  * Black: AM.
 2. Day of week & date (DDMM) in 2 rows.
 3. Middle spoke indicator for bluetooth connectivity & battery level.
   1. bluetooth indicated by colour of centre:
@@ -29,8 +29,16 @@ Watch face: AM, bluetooth disconnected, battery charging
 ![screenshot 3](https://raw.githubusercontent.com/sdneon/NoHands/master/store/pebble-screenshot-3-PM,low-batt.png "Watch face: PM, bluetooth connected, battery low & not charging")
 Watch face: PM, bluetooth connected, battery low & not charging
 
+## Changelog
+* v1.2
+  * Colour scheme changes.
+    * Removed pairs of simliar colours.
+    * Date is now always drawn in contrasting colour from background.
+* v1.1
+  * Initial release.
+
 ## TODOs
 * Colour scheme needs to be fixed.
-  * Sometimes the date is drawn in light coloured sector and is hard to read owing to poor colour contrast.
   * Bluetooth indicator colour of white & light gray may be too hard to differentiate.
+  * Hour display is sometimes hard to read owing to poor contrast. Perhaps add a shadow?
 * Add random (say occuring at a random minute each hour) animated peek-through images in the other empty quadrant.

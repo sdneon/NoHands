@@ -16,12 +16,13 @@
 
 #include "pebble.h"
 
+//Specify this flag to invert the colour scheme:
+#define INVERT_COLOURS
+
 //#define DEBUG_MODE 1
 //#define DEBUG_COLOURS 1
 //#define DEBUG_HOUR_HINT 1
 
-#define MAX_COLOURS 16
-//#define MAX_COLOURS 5
 static const int32_t ANGLE_HOUR_HINT = TRIG_MAX_ANGLE * 5 / 360; //overlaps hour line
 //static const int32_t ANGLE_HOUR_HINT = TRIG_MAX_ANGLE * 15 / 360; //avoids overlapping hour line
 static const int32_t ANGLE_DEG_45 = TRIG_MAX_ANGLE * 45 / 360;
@@ -32,25 +33,54 @@ static const int32_t ANGLE_DEG_225 = TRIG_MAX_ANGLE * 225 / 360;
 static const int32_t ANGLE_DEG_270 = TRIG_MAX_ANGLE * 3 / 4;
 static const int32_t ANGLE_DEG_315 = TRIG_MAX_ANGLE * 315 / 360;
 static const int32_t ANGLE_DEG_360 = TRIG_MAX_ANGLE;
+#define MAX_COLOURS 17
 static uint8_t COLOURS[MAX_COLOURS][2] = {
     {GColorBulgarianRoseARGB8, GColorRoseValeARGB8},
     {GColorImperialPurpleARGB8, GColorJazzberryJamARGB8},
-    {GColorPurpleARGB8, GColorPurpureusARGB8},
+    {GColorPurpleARGB8, GColorShockingPinkARGB8},
     {GColorFashionMagentaARGB8, GColorRichBrilliantLavenderARGB8},
     {GColorMagentaARGB8, GColorShockingPinkARGB8},
-    {GColorVividVioletARGB8, GColorLavenderIndigoARGB8}, //too similar
-    {GColorElectricUltramarineARGB8, GColorVeryLightBlueARGB8},
     {GColorLibertyARGB8, GColorBabyBlueEyesARGB8},
     {GColorOxfordBlueARGB8, GColorIndigoARGB8},
     {GColorBlueARGB8, GColorPictonBlueARGB8},
-    {GColorDukeBlueARGB8, GColorVividCeruleanARGB8}, //both similarly dark
+    {GColorDukeBlueARGB8, GColorVividCeruleanARGB8},
     {GColorCobaltBlueARGB8, GColorCyanARGB8},
     {GColorDarkGreenARGB8, GColorKellyGreenARGB8},
     {GColorArmyGreenARGB8, GColorBrassARGB8},
-    //{GColorGreenARGB8, GColorMintGreenARGB8}, //way too light
-    //{GColorIslamicGreenARGB8, GColorInchwormARGB8}, //too light
-    {GColorOrangeARGB8, GColorRajahARGB8},
+    {GColorJaegerGreenARGB8, GColorMintGreenARGB8}, //pastel
+    {GColorIslamicGreenARGB8, GColorInchwormARGB8},
+    {GColorMidnightGreenARGB8, GColorMediumSpringGreenARGB8},
+    {GColorOrangeARGB8, GColorChromeYellowARGB8},
     {GColorSunsetOrangeARGB8, GColorMelonARGB8} //pinkish
+};
+
+/**
+ * Indexed by: [min hand's quadrant][hr hand's quadrant]
+ */
+static const int8_t DATE_QUAD_INDEX[4][4] = {
+    { 2, 2, 1, 1 },
+    { 2, 2, 0, 2 },
+    { 1, 0, 1, 1 },
+    { 1, 2, 1, 1 }
+};
+static const int8_t SURPRISE_QUAD_INDEX[4][4] = {
+    { 3, 3, 3, 2 },
+    { 3, 3, 3, 0 },
+    { 3, 3, 0, 0 },
+    { 2, 0, 0, 0 }
+};
+//diagonals: true if angleM <= angleH
+static const bool DATE_QUAD_USE_PRI[4][4] = {
+    {  true,  true, false, false },
+    { false,  true,  true, false },
+    {  true, false,  true,  true },
+    {  true,  true, false,  true }
+};
+static const bool SURPRISE_USE_PRI[4][4] = {
+    {  true,  true,  true, false },
+    { false,  true,  true,  true },
+    { false, false,  true,  true },
+    {  true, false, false,  true }
 };
 
 static Window *window;
@@ -63,6 +93,8 @@ int hr = 0, min = 0;
 int m_nColourIndex = 0;
 int dateQuadrant = 0, //which quadrant to put date in: 0: NE, 1, SE, 2: SW, 3: NW
     battQuadrant = 1; //which quadrant to put battery indicator in (always try to put it above date)
+bool battQuadrantUseApc = false,
+    dateQuadrantUseApc = false;
 
 //
 //Bluetooth stuff
@@ -112,7 +144,7 @@ static void bg_update_proc(Layer *layer, GContext *ctx)
 #ifdef DEBUG_COLOURS
     m_nColourIndex = t->tm_sec * MAX_COLOURS / 60;
 #else
-    m_nColourIndex = hr * MAX_COLOURS / 24;
+    m_nColourIndex = (t->tm_yday * 24 + hr) % MAX_COLOURS;
 #endif
     //APP_LOG(APP_LOG_LEVEL_DEBUG, "h:m %d:%d => angles: %d, %d", hr, min, (int) (angleM * 360 / TRIG_MAX_ANGLE), (int) (angleH * 360 / TRIG_MAX_ANGLE));
     bool bIsSmallSectorLight = true;
@@ -142,81 +174,11 @@ static void bg_update_proc(Layer *layer, GContext *ctx)
         }
     }
 
-    //Find 1st empty quadrant for text
-    dateQuadrant = 0;
-    if (angleM <= ANGLE_DEG_90)
-    {
-        if (angleH <= ANGLE_DEG_180)
-        {
-            //can use any of quadrants (2), (3), so use these:
-            battQuadrant = 3;
-            dateQuadrant = 2;
-        }
-        else if (angleH <= ANGLE_DEG_270)
-        {
-            battQuadrant = 3;
-            dateQuadrant = 1;
-        }
-        else
-        {
-            battQuadrant = 2;
-            dateQuadrant = 1;
-        }
-    }
-    else if (angleM <= ANGLE_DEG_180)
-    {
-        if (angleH <= ANGLE_DEG_180)
-        {
-            battQuadrant = 3;
-            dateQuadrant = 2;
-        }
-        else if (angleH <= ANGLE_DEG_270)
-        {
-            battQuadrant = 3;
-            dateQuadrant = 0;
-        }
-        else
-        {
-            battQuadrant = 0;
-            dateQuadrant = 2;
-        }
-    }
-    else if (angleM <= ANGLE_DEG_270)
-    {
-        if (angleH <= ANGLE_DEG_90)
-        {
-            battQuadrant = 3;
-            dateQuadrant = 1;
-        }
-        else if (angleH <= ANGLE_DEG_180)
-        {
-            battQuadrant = 3;
-            dateQuadrant = 0;
-        }
-        else
-        {
-            battQuadrant = 0;
-            dateQuadrant = 1;
-        }
-    }
-    else
-    {
-        if (angleH <= ANGLE_DEG_90)
-        {
-            battQuadrant = 2;
-            dateQuadrant = 1;
-        }
-        else if (angleH <= ANGLE_DEG_180)
-        {
-            battQuadrant = 0;
-            dateQuadrant = 2;
-        }
-        else
-        {
-            battQuadrant = 0;
-            dateQuadrant = 1;
-        }
-    }
+    int mInQ = angleM / ANGLE_DEG_90,
+        hInQ = angleH / ANGLE_DEG_90;
+    dateQuadrant = DATE_QUAD_INDEX[mInQ][hInQ];
+    dateQuadrantUseApc = (mInQ != hInQ)?
+        DATE_QUAD_USE_PRI[mInQ][hInQ]: (angleM < angleH);
 
     //create rectangle (for simplicity instead of sector; triangle is insufficient as at wide angles, it won't cover the corner!)
     GPathInfo sectorInfo = {
@@ -231,9 +193,14 @@ static void bg_update_proc(Layer *layer, GContext *ctx)
     GPoint center = grect_center_point(&bounds);
     gpath_move_to(sector, center);
 
-    bIsSmallSectorLight = ! bIsSmallSectorLight; //try inverting colour scheme to more light (i.e. bigger light sector)
+    //bIsSmallSectorLight = ! bIsSmallSectorLight; //try inverting colour scheme to more light (i.e. bigger light sector)
+#ifdef INVERT_COLOURS
+    GColor clrDark = (GColor8){.argb=COLOURS[m_nColourIndex][1]};
+    GColor clrLight = (GColor8){.argb=COLOURS[m_nColourIndex][0]};
+#else
     GColor clrDark = (GColor8){.argb=COLOURS[m_nColourIndex][0]};
     GColor clrLight = (GColor8){.argb=COLOURS[m_nColourIndex][1]};
+#endif
     //draw background (rest, i.e. big sector)
     graphics_context_set_fill_color(ctx, !bIsSmallSectorLight? clrLight: clrDark);
     graphics_fill_rect(ctx, layer_get_bounds(layer), 0, GCornerNone);
@@ -282,6 +249,17 @@ static void date_update_proc(Layer *layer, GContext *ctx)
 
     strftime(s_day_buffer, sizeof(s_day_buffer), "%a\n%d %b", t); //print e.g. Wed\n16 Jun
     text_layer_set_text(s_day_label, s_day_buffer);
+    text_layer_set_text_color(s_day_label,
+        dateQuadrantUseApc?
+#ifdef INVERT_COLOURS
+            GColorWhite: GColorBlack);
+            //(GColor8){.argb=COLOURS[m_nColourIndex][1]}:
+            //(GColor8){.argb=COLOURS[m_nColourIndex][0]});
+#else
+            GColorBlack: GColorWhite);
+            //(GColor8){.argb=COLOURS[m_nColourIndex][0]}:
+            //(GColor8){.argb=COLOURS[m_nColourIndex][1]});
+#endif
 
     GRect bounds = layer_get_bounds(window_get_root_layer(window));
     int winHalfWidth = bounds.size.w / 2,
@@ -426,4 +404,3 @@ int main() {
     app_event_loop();
     deinit();
 }
-
