@@ -82,10 +82,17 @@ static const bool SURPRISE_USE_PRI[4][4] = {
     { false, false,  true,  true },
     {  true, false, false,  true }
 };
+static const int OFFSET_OUTLINE[5][2] = {
+    { -1, -1 },
+    { 1, -1 },
+    { 1, 1 },
+    { -1, 1 },
+    { 0, 0 }
+};
 
 static Window *window;
 static Layer *s_simple_bg_layer, *s_date_layer, *s_spoke_layer;
-static TextLayer *s_day_label, *s_hour_label;
+static TextLayer *s_day_label, *s_hour_label[5];
 
 static char s_day_buffer[15], s_hour_buffer[4];
 
@@ -216,8 +223,7 @@ static void bg_update_proc(Layer *layer, GContext *ctx)
     //write 'hour' hint
     strftime(s_hour_buffer, sizeof(s_hour_buffer), "%l", t);
     //strftime(s_hour_buffer, sizeof(s_hour_buffer), "12", t); //DEBUG: Try widest hour displayed: 12
-    text_layer_set_text(s_hour_label, s_hour_buffer);
-    GRect frame = layer_get_frame((Layer*)s_hour_label);
+
     /**
      * In FONT_KEY_BITHAM_30_BLACK, digit '6' is ~18x21 px.
      * Thus, need vertical offset (of 5 px) as top of font character is 9px down.
@@ -233,12 +239,24 @@ static void bg_update_proc(Layer *layer, GContext *ctx)
     {
         radius = widthHalf - 18;
     }
-    frame.origin.x = center.x - (frame.size.w / 2)
-        + radius * sin_lookup(angle) / TRIG_MAX_RATIO;
-    frame.origin.y = center.y - (frame.size.h / 2) - 5 //offset 5px up
-        - radius * cos_lookup(angle) / TRIG_MAX_RATIO;
-    layer_set_frame((Layer*)s_hour_label, frame);
-    text_layer_set_text_color(s_hour_label, (hr >= 12)? GColorWhite: GColorBlack);
+    for (int i = 0; i < 5; ++i)
+    {
+        text_layer_set_text(s_hour_label[i], s_hour_buffer);
+        GRect frame = layer_get_frame((Layer*)s_hour_label[i]);
+        frame.origin.x = OFFSET_OUTLINE[i][0] + center.x - (frame.size.w / 2)
+            + radius * sin_lookup(angle) / TRIG_MAX_RATIO;
+        frame.origin.y = OFFSET_OUTLINE[i][1] + center.y - (frame.size.h / 2) - 5 //offset 5px up
+            - radius * cos_lookup(angle) / TRIG_MAX_RATIO;
+        layer_set_frame((Layer*)s_hour_label[i], frame);
+        if (i < 4)
+        {
+            text_layer_set_text_color(s_hour_label[i], (hr >= 12)? GColorBlack: GColorWhite);
+        }
+        else
+        {
+            text_layer_set_text_color(s_hour_label[i], (hr >= 12)? GColorWhite: GColorBlack);
+        }
+    }
 }
 
 //2. 2nd layer contains date & hour text
@@ -339,14 +357,18 @@ static void window_load(Window *window) {
     text_layer_set_text_alignment(s_day_label, GTextAlignmentCenter);
     layer_add_child(s_date_layer, text_layer_get_layer(s_day_label));
 
-    s_hour_label = text_layer_create(GRect(0, 0, 40, 32));
-    text_layer_set_text(s_hour_label, s_hour_buffer);
-    text_layer_set_background_color(s_hour_label, GColorClear);
-    //text_layer_set_background_color(s_hour_label, GColorOrange); //DEBUG
-    text_layer_set_text_color(s_hour_label, GColorWhite);
-    text_layer_set_font(s_hour_label, fonts_get_system_font(FONT_KEY_BITHAM_30_BLACK)); //FONT_KEY_GOTHIC_28_BOLD));
-    text_layer_set_text_alignment(s_hour_label, GTextAlignmentCenter);
-    layer_add_child(s_date_layer, text_layer_get_layer(s_hour_label));
+    //1st 4 layers are for the text outline, last layer (topmost) is the text itself
+    for (int i = 0; i < 5; ++i)
+    {
+        s_hour_label[i] = text_layer_create(GRect(OFFSET_OUTLINE[i][0], OFFSET_OUTLINE[i][1], 40, 32));
+        text_layer_set_text(s_hour_label[i], s_hour_buffer);
+        text_layer_set_background_color(s_hour_label[i], GColorClear);
+        //text_layer_set_background_color(s_hour_label[i], GColorOrange); //DEBUG positioning of label
+        text_layer_set_text_color(s_hour_label[i], GColorWhite);
+        text_layer_set_font(s_hour_label[i], fonts_get_system_font(FONT_KEY_BITHAM_30_BLACK)); //FONT_KEY_GOTHIC_28_BOLD));
+        text_layer_set_text_alignment(s_hour_label[i], GTextAlignmentCenter);
+        layer_add_child(s_date_layer, text_layer_get_layer(s_hour_label[i]));
+    }
 
     //3. 3rd layer contains the bluetooth & battery indicator
     s_spoke_layer = layer_create(bounds);
@@ -360,7 +382,10 @@ static void window_unload(Window *window) {
     layer_destroy(s_spoke_layer);
 
     text_layer_destroy(s_day_label);
-    text_layer_destroy(s_hour_label);
+    for (int i = 0; i < 5; ++i)
+    {
+        text_layer_destroy(s_hour_label[i]);
+    }
 }
 
 //

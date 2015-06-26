@@ -30,6 +30,8 @@ Watch face: AM, bluetooth disconnected, battery charging
 Watch face: PM, bluetooth connected, battery low & not charging
 
 ## Changelog
+* v1.3 work-in-progress
+  * Hour is outlined so that it will be easier to see at all times.
 * v1.2
   * Colour scheme changes.
     * Removed pairs of simliar colours.
@@ -40,5 +42,4 @@ Watch face: PM, bluetooth connected, battery low & not charging
 ## TODOs
 * Colour scheme needs to be fixed.
   * Bluetooth indicator colour of white & light gray may be too hard to differentiate.
-  * Hour display is sometimes hard to read owing to poor contrast. Perhaps add a shadow?
 * Add random (say occuring at a random minute each hour) animated peek-through images in the other empty quadrant.
