@@ -134,7 +134,7 @@ int dateQuadrant = 0, //which quadrant to put date in: 0: NE, 1, SE, 2: SW, 3: N
     surpQuadrant = 1; //which quadrant to put battery indicator in (always try to put it above date)
 bool surpQuadrantUseApc = false,
     dateQuadrantUseApc = false;
-int lastSurpriseHr = -1, nextSurpriseMin = -1;
+int lastSurpriseHr = -1, nextSurpriseMin = -1, surpriseShownCnt = 0;
 
 //
 //Bluetooth stuff
@@ -343,13 +343,19 @@ static void bg_update_proc(Layer *layer, GContext *ctx)
         {
             nextSurpriseMin = rand() % 60;
         }
-        else //showing pic for 1st time, so randomly pick a min after current min
+        else if (nextSurpriseMin < 59) //showing pic for 1st time, so randomly pick a min after current min
         {
-            nextSurpriseMin = (rand() % (59 - min)) + min;
+            nextSurpriseMin = (rand() % (59 - min)) + min + 1;
         }
+        surpriseShownCnt = 0;
     }
-    if (bToShowPicFor1stTime || (min == nextSurpriseMin))
+    if (bToShowPicFor1stTime
+        || ((min == nextSurpriseMin) && (surpriseShownCnt == 0)))
     {
+        if (!bToShowPicFor1stTime)
+        {
+            ++surpriseShownCnt;
+        }
         bitmap_layer_set_bitmap(m_spbmLayer, m_spbmPics[rand() % MAX_PICS]);
         //move surprise pic to appropriate quadrant:
         moveLayer((Layer*)m_spbmLayer, layer, surpQuadrant);
