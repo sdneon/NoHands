@@ -3,7 +3,7 @@
   "shortName": "No Hands",
   "longName": "No Hands (Analogue Colour)",
   "companyName": "neon",
-  "versionLabel": "1.2",
+  "versionLabel": "1.3",
   "sdkVersion": "3",
   "targetPlatforms": ["basalt"],
   "watchapp": {
@@ -17,11 +17,41 @@
             "menuIcon": true,
             "name": "IMAGE_MENU_ICON",
             "file": "images/logo.png"
-        },
-        {
+        }
+        ,{
           "type": "png",
           "name": "EXAMPLE_IMAGE",
           "file": "images/example-image.png"
+        }
+        ,{
+          "type": "png",
+          "name": "IMAGE_1",
+          "file": "images/biplane.png"
+        }
+        ,{
+          "type": "png",
+          "name": "IMAGE_2",
+          "file": "images/dalek.png"
+        }
+        ,{
+          "type": "png",
+          "name": "IMAGE_3",
+          "file": "images/galaxies.png"
+        }
+        ,{
+          "type": "png",
+          "name": "IMAGE_4",
+          "file": "images/icedlemontea.png"
+        }
+        ,{
+          "type": "png",
+          "name": "IMAGE_5",
+          "file": "images/plane.png"
+        }
+        ,{
+          "type": "png",
+          "name": "IMAGE_6",
+          "file": "images/strawberry.png"
         }
     ]
   }

@@ -9,6 +9,7 @@
  *   > battery level:
  *     > red= charging, black= draining.
  *     > spoke rim thickness of 1 to 5 for 5 battery levels of <20% to 100%.
+ * > Random surprise picture pops up once every hour (at a random minute).
  *
  * Modified by @neon from simple-analog-master example.
  **/
@@ -16,12 +17,16 @@
 
 #include "pebble.h"
 
-//Specify this flag to invert the colour scheme:
-#define INVERT_COLOURS
-
+//Debug flags:
 //#define DEBUG_MODE 1
 //#define DEBUG_COLOURS 1
 //#define DEBUG_HOUR_HINT 1
+
+//Specify this flag to invert the colour scheme:
+#define INVERT_COLOURS
+
+//Interval (in ms) to show surprise pic
+#define PIC_SHOW_INTERVAL 1000
 
 static const int32_t ANGLE_HOUR_HINT = TRIG_MAX_ANGLE * 5 / 360; //overlaps hour line
 //static const int32_t ANGLE_HOUR_HINT = TRIG_MAX_ANGLE * 15 / 360; //avoids overlapping hour line
@@ -33,6 +38,8 @@ static const int32_t ANGLE_DEG_225 = TRIG_MAX_ANGLE * 225 / 360;
 static const int32_t ANGLE_DEG_270 = TRIG_MAX_ANGLE * 3 / 4;
 static const int32_t ANGLE_DEG_315 = TRIG_MAX_ANGLE * 315 / 360;
 static const int32_t ANGLE_DEG_360 = TRIG_MAX_ANGLE;
+
+//List of Primary & Secondary colour pairs used to paint the watchface:
 #define MAX_COLOURS 17
 static uint8_t COLOURS[MAX_COLOURS][2] = {
     {GColorBulgarianRoseARGB8, GColorRoseValeARGB8},
@@ -54,7 +61,19 @@ static uint8_t COLOURS[MAX_COLOURS][2] = {
     {GColorSunsetOrangeARGB8, GColorMelonARGB8} //pinkish
 };
 
+//List of surprise pics:
+#define MAX_PICS 6
+static const int PIC_ID[MAX_PICS] = {
+    RESOURCE_ID_IMAGE_1,
+    RESOURCE_ID_IMAGE_2,
+    RESOURCE_ID_IMAGE_3,
+    RESOURCE_ID_IMAGE_4,
+    RESOURCE_ID_IMAGE_5,
+    RESOURCE_ID_IMAGE_6
+};
+
 /**
+ * The (empty) quadrants in which to place the date & surprise pic displays respectively.
  * Indexed by: [min hand's quadrant][hr hand's quadrant]
  */
 static const int8_t DATE_QUAD_INDEX[4][4] = {
@@ -69,19 +88,29 @@ static const int8_t SURPRISE_QUAD_INDEX[4][4] = {
     { 3, 3, 0, 0 },
     { 2, 0, 0, 0 }
 };
-//diagonals: true if angleM <= angleH
+/**
+ * Whether the quadrant is in the primary colour.
+ * Diagonals (computation needed as both min & hr are in this same area):
+ *   true if angleM <= angleH, false o.w.
+ */
 static const bool DATE_QUAD_USE_PRI[4][4] = {
     {  true,  true, false, false },
     { false,  true,  true, false },
     {  true, false,  true,  true },
     {  true,  true, false,  true }
 };
-static const bool SURPRISE_USE_PRI[4][4] = {
+static const bool SURPRISE_QUAD_USE_PRI[4][4] = {
     {  true,  true,  true, false },
     { false,  true,  true,  true },
     { false, false,  true,  true },
     {  true, false, false,  true }
 };
+
+/**
+ * Frame position offsets for hour text layers to paint text with outline.
+ * 1st 4 layers together constitute the outline.
+ * Last layer is the main text body.
+ **/
 static const int OFFSET_OUTLINE[5][2] = {
     { -1, -1 },
     { 1, -1 },
@@ -93,15 +122,19 @@ static const int OFFSET_OUTLINE[5][2] = {
 static Window *window;
 static Layer *s_simple_bg_layer, *s_date_layer, *s_spoke_layer;
 static TextLayer *s_day_label, *s_hour_label[5];
+static BitmapLayer *m_spbmLayer;
+static GBitmap *m_spbmPics[MAX_PICS] = {0};
+static AppTimer *m_sptimer1;
 
 static char s_day_buffer[15], s_hour_buffer[4];
 
 int hr = 0, min = 0;
 int m_nColourIndex = 0;
 int dateQuadrant = 0, //which quadrant to put date in: 0: NE, 1, SE, 2: SW, 3: NW
-    battQuadrant = 1; //which quadrant to put battery indicator in (always try to put it above date)
-bool battQuadrantUseApc = false,
+    surpQuadrant = 1; //which quadrant to put battery indicator in (always try to put it above date)
+bool surpQuadrantUseApc = false,
     dateQuadrantUseApc = false;
+int lastSurpriseHr = -1, nextSurpriseMin = -1;
 
 //
 //Bluetooth stuff
@@ -125,6 +158,41 @@ static void battery_handler(BatteryChargeState new_state) {
     if (s_spoke_layer) layer_mark_dirty(s_spoke_layer);
 }
 
+void hidePic(void *a_pData)
+{
+    layer_set_frame((Layer*)m_spbmLayer, GRect(0,0,0,0));
+}
+
+void moveLayer(Layer *layer, Layer *refLayer, int quad)
+{
+    GRect bounds = layer_get_bounds(window_get_root_layer(window));
+    int winHalfWidth = bounds.size.w / 2,
+        winHalfHeight = bounds.size.h / 2;
+    GRect frame = layer_get_frame(refLayer);
+    int offsetX = (winHalfWidth - frame.size.w) / 2,
+        offsetY = (winHalfHeight - frame.size.h) / 2;
+    switch (quad)
+    {
+        case 0: //NE
+            frame.origin.x = winHalfWidth + offsetX;
+            frame.origin.y = offsetY;
+            break;
+        case 1: //SE
+            frame.origin.x = winHalfWidth + offsetX;
+            frame.origin.y = winHalfHeight + offsetY;
+            break;
+        case 2: //SW
+            frame.origin.x = offsetX;
+            frame.origin.y = winHalfHeight + offsetY;
+            break;
+        default: //NW
+            frame.origin.x = offsetX;
+            frame.origin.y = offsetY;
+            break;
+    }
+    layer_set_frame(layer, frame);
+}
+
 //1. Base layer contains coloured analogue watch face
 static void bg_update_proc(Layer *layer, GContext *ctx)
 {
@@ -138,12 +206,12 @@ static void bg_update_proc(Layer *layer, GContext *ctx)
     hr = t->tm_hour;
     min = t->tm_min;
     //hr = 7; min = 20; //DEBUG
-#ifndef DEBUG_MODE
-    int32_t angleM = TRIG_MAX_ANGLE * min / 60;
-#else
+#ifdef DEBUG_MODE
     int sec = t->tm_sec;
-    int32_t angleM = TRIG_MAX_ANGLE * sec / 60; //DEBUG
+    min = sec;
+    if (min == 59) --lastSurpriseHr; //force re-selection of surprise min after every round of min hand
 #endif
+    int32_t angleM = TRIG_MAX_ANGLE * min / 60;
     //int32_t angleH = TRIG_MAX_ANGLE * (hr % 12) / 12; //without minutes contribution
     int32_t angleH = (TRIG_MAX_ANGLE * (((hr % 12) * 6) + (min / 10))) / (12 * 6); //with minutes contribution
     int32_t angleMid;
@@ -186,6 +254,9 @@ static void bg_update_proc(Layer *layer, GContext *ctx)
     dateQuadrant = DATE_QUAD_INDEX[mInQ][hInQ];
     dateQuadrantUseApc = (mInQ != hInQ)?
         DATE_QUAD_USE_PRI[mInQ][hInQ]: (angleM < angleH);
+    surpQuadrant = SURPRISE_QUAD_INDEX[mInQ][hInQ];
+    surpQuadrantUseApc = (mInQ != hInQ)?
+        SURPRISE_QUAD_USE_PRI[mInQ][hInQ]: (angleM < angleH);
 
     //create rectangle (for simplicity instead of sector; triangle is insufficient as at wide angles, it won't cover the corner!)
     GPathInfo sectorInfo = {
@@ -239,7 +310,8 @@ static void bg_update_proc(Layer *layer, GContext *ctx)
     {
         radius = widthHalf - 18;
     }
-    for (int i = 0; i < 5; ++i)
+    int i;
+    for (i = 0; i < 5; ++i)
     {
         text_layer_set_text(s_hour_label[i], s_hour_buffer);
         GRect frame = layer_get_frame((Layer*)s_hour_label[i]);
@@ -256,6 +328,32 @@ static void bg_update_proc(Layer *layer, GContext *ctx)
         {
             text_layer_set_text_color(s_hour_label[i], (hr >= 12)? GColorWhite: GColorBlack);
         }
+    }
+
+    bool bToShowPicFor1stTime = false;
+    if (lastSurpriseHr < 0)
+    {
+        bToShowPicFor1stTime = true; //show pic when watchface is first loaded
+    }
+    if (bToShowPicFor1stTime || (hr != lastSurpriseHr))
+    {
+        lastSurpriseHr = hr;
+        //randomly pick a min to show surprise pic:
+        if (!bToShowPicFor1stTime)
+        {
+            nextSurpriseMin = rand() % 60;
+        }
+        else //showing pic for 1st time, so randomly pick a min after current min
+        {
+            nextSurpriseMin = (rand() % (59 - min)) + min;
+        }
+    }
+    if (bToShowPicFor1stTime || (min == nextSurpriseMin))
+    {
+        bitmap_layer_set_bitmap(m_spbmLayer, m_spbmPics[rand() % MAX_PICS]);
+        //move surprise pic to appropriate quadrant:
+        moveLayer((Layer*)m_spbmLayer, layer, surpQuadrant);
+        m_sptimer1 = app_timer_register(PIC_SHOW_INTERVAL, (AppTimerCallback) hidePic, NULL);
     }
 }
 
@@ -279,32 +377,7 @@ static void date_update_proc(Layer *layer, GContext *ctx)
             //(GColor8){.argb=COLOURS[m_nColourIndex][1]});
 #endif
 
-    GRect bounds = layer_get_bounds(window_get_root_layer(window));
-    int winHalfWidth = bounds.size.w / 2,
-        winHalfHeight = bounds.size.h / 2;
-    GRect frame = layer_get_frame((Layer*)s_day_label);
-    int offsetX = (winHalfWidth - frame.size.w) / 2,
-        offsetY = (winHalfHeight - frame.size.h) / 2;
-    switch (dateQuadrant)
-    {
-        case 0: //NE
-            frame.origin.x = winHalfWidth + offsetX;
-            frame.origin.y = offsetY;
-            break;
-        case 1: //SE
-            frame.origin.x = winHalfWidth + offsetX;
-            frame.origin.y = winHalfHeight + offsetY;
-            break;
-        case 2: //SW
-            frame.origin.x = offsetX;
-            frame.origin.y = winHalfHeight + offsetY;
-            break;
-        default: //NW
-            frame.origin.x = offsetX;
-            frame.origin.y = offsetY;
-            break;
-    }
-    layer_set_frame((Layer*)s_day_label, frame);
+    moveLayer((Layer*)s_day_label, (Layer*)s_day_label, dateQuadrant);
 }
 
 //3. 3rd layer contains the bluetooth & battery indicator
@@ -320,7 +393,7 @@ static void spoke_update_proc(Layer *layer, GContext *ctx)
     graphics_context_set_stroke_color(ctx, c);
     graphics_context_set_fill_color(ctx, c);
     graphics_fill_circle(ctx, center, 3 + px);
-    c = m_bBtConnected? GColorWhite: GColorLightGray;
+    c = m_bBtConnected? GColorWhite: GColorShockingPink;
     graphics_context_set_stroke_color(ctx, c);
     graphics_context_set_fill_color(ctx, c);
     graphics_fill_circle(ctx, center, 3);
@@ -358,7 +431,8 @@ static void window_load(Window *window) {
     layer_add_child(s_date_layer, text_layer_get_layer(s_day_label));
 
     //1st 4 layers are for the text outline, last layer (topmost) is the text itself
-    for (int i = 0; i < 5; ++i)
+    int i;
+    for (i = 0; i < 5; ++i)
     {
         s_hour_label[i] = text_layer_create(GRect(OFFSET_OUTLINE[i][0], OFFSET_OUTLINE[i][1], 40, 32));
         text_layer_set_text(s_hour_label[i], s_hour_buffer);
@@ -374,6 +448,17 @@ static void window_load(Window *window) {
     s_spoke_layer = layer_create(bounds);
     layer_set_update_proc(s_spoke_layer, spoke_update_proc);
     layer_add_child(window_layer, s_spoke_layer);
+
+    //4. Surprise pic layer
+    m_spbmLayer = bitmap_layer_create(bounds);
+    for (i = 0; i < MAX_PICS; ++i)
+    {
+        m_spbmPics[i] = gbitmap_create_with_resource(PIC_ID[i]);
+    }
+    bitmap_layer_set_background_color(m_spbmLayer, GColorClear);
+    bitmap_layer_set_compositing_mode(m_spbmLayer, GCompOpSet);
+    bitmap_layer_set_bitmap(m_spbmLayer, m_spbmPics[0]);
+    layer_add_child(window_layer, bitmap_layer_get_layer(m_spbmLayer));
 }
 
 static void window_unload(Window *window) {
@@ -382,10 +467,20 @@ static void window_unload(Window *window) {
     layer_destroy(s_spoke_layer);
 
     text_layer_destroy(s_day_label);
-    for (int i = 0; i < 5; ++i)
+    int i;
+    for (i = 0; i < 5; ++i)
     {
         text_layer_destroy(s_hour_label[i]);
     }
+    for (i = 0; i < MAX_PICS; ++i)
+    {
+        if (m_spbmPics[i])
+        {
+            gbitmap_destroy(m_spbmPics[i]);
+        }
+    }
+    bitmap_layer_destroy(m_spbmLayer);
+    app_timer_cancel(m_sptimer1);
 }
 
 //
@@ -425,6 +520,7 @@ static void deinit() {
 }
 
 int main() {
+    srand(time(NULL));
     init();
     app_event_loop();
     deinit();

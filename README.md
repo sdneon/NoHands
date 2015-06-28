@@ -13,11 +13,12 @@ Inspired by [Chromatick](http://chromatickface.tumblr.com/concept).
 3. Middle spoke indicator for bluetooth connectivity & battery level.
   1. bluetooth indicated by colour of centre:
     * White: connected,
-    * Light gray: disconnected.
+    * Pink: disconnected.
   2. battery level:
     * Red: charging
     * Black: draining.
     * spoke rim thickness of 1 to 5 for 5 battery levels of <20% to 100%.
+4. Random image popup at least once every hour.
 
 ### Screenshots
 ![screenshot 1](https://raw.githubusercontent.com/sdneon/NoHands/master/store/pebble-screenshot-1-AM.png "Watch face: AM, bluetooth connected, battery not charging")
@@ -30,16 +31,13 @@ Watch face: AM, bluetooth disconnected, battery charging
 Watch face: PM, bluetooth connected, battery low & not charging
 
 ## Changelog
-* v1.3 work-in-progress
+* v1.3
   * Hour is outlined so that it will be easier to see at all times.
+  * Random (once every hour, and upon startup) surprise image popup for fun.
+  * Changed to Pink Bluetooth indicator for disconnection.
 * v1.2
   * Colour scheme changes.
     * Removed pairs of simliar colours.
     * Date is now always drawn in contrasting colour from background.
 * v1.1
   * Initial release.
-
-## TODOs
-* Colour scheme needs to be fixed.
-  * Bluetooth indicator colour of white & light gray may be too hard to differentiate.
-* Add random (say occuring at a random minute each hour) animated peek-through images in the other empty quadrant.
