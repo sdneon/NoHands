@@ -21,12 +21,21 @@
 //#define DEBUG_MODE 1
 //#define DEBUG_COLOURS 1
 //#define DEBUG_HOUR_HINT 1
+//#define DISABLE_CONFIG
 
 //Specify this flag to invert the colour scheme:
 #define INVERT_COLOURS
 
 //Interval (in ms) to show surprise pic
 #define PIC_SHOW_INTERVAL 1000
+
+//masks for vibes:
+#define MASKV_BTDC   0x20000
+#define MASKV_HOURLY 0x10000
+#define MASKV_FROM   0xFF00
+#define MASKV_TO     0x00FF
+//def: disabled, 10am to 8pm
+#define DEF_VIBES    0x0A14
 
 static const int32_t ANGLE_HOUR_HINT = TRIG_MAX_ANGLE * 5 / 360; //overlaps hour line
 //static const int32_t ANGLE_HOUR_HINT = TRIG_MAX_ANGLE * 15 / 360; //avoids overlapping hour line
@@ -136,11 +145,65 @@ bool surpQuadrantUseApc = false,
     dateQuadrantUseApc = false;
 int lastSurpriseHr = -1, nextSurpriseMin = -1, surpriseShownCnt = 0;
 
+static int m_nVibes = DEF_VIBES;
+// Vibe pattern for loss of BT connection: ON for 400ms, OFF for 100ms, ON for 300ms, OFF 100ms, 100ms:
+static const uint32_t const VIBE_SEG_BT_LOSS[] = { 400, 200, 200, 400, 100 };
+static const VibePattern VIBE_PAT_BT_LOSS = {
+  .durations = VIBE_SEG_BT_LOSS,
+  .num_segments = ARRAY_LENGTH(VIBE_SEG_BT_LOSS),
+};
+
+//
+//Configuration stuff via AppMessage API
+//
+#define KEY_VIBES 0
+
+static void inbox_received_callback(DictionaryIterator *iterator, void *context) {
+    // Get the first pair
+    Tuple *t = dict_read_first(iterator);
+    int nNewValue, i;
+
+    // Process all pairs present
+    while(t != NULL) {
+        // Process this pair's key
+        //APP_LOG(APP_LOG_LEVEL_DEBUG, "Key:%d received with value:%d", (int)t->key, (int)t->value->int32);
+        switch (t->key) {
+            case KEY_VIBES:
+                nNewValue = t->value->int32;
+                if (m_nVibes != nNewValue)
+                {
+                    m_nVibes = nNewValue;
+                }
+                break;
+        }
+
+        // Get next pair, if any
+        t = dict_read_next(iterator);
+    }
+}
+
+static void inbox_dropped_callback(AppMessageResult reason, void *context) {
+    APP_LOG(APP_LOG_LEVEL_ERROR, "Message dropped!");
+}
+
+static void outbox_failed_callback(DictionaryIterator *iterator, AppMessageResult reason, void *context) {
+    APP_LOG(APP_LOG_LEVEL_ERROR, "Outbox send failed!");
+}
+
+static void outbox_sent_callback(DictionaryIterator *iterator, void *context) {
+    APP_LOG(APP_LOG_LEVEL_INFO, "Outbox send success!");
+}
+
 //
 //Bluetooth stuff
 //
 bool m_bBtConnected = false;
 static void bt_handler(bool connected) {
+    if (!connected && m_bBtConnected //vibrate once upon BT connection lost
+        && (m_nVibes & MASKV_BTDC)) //only if option enabled
+    {
+        vibes_enqueue_custom_pattern(VIBE_PAT_BT_LOSS);
+    }
     m_bBtConnected = connected;
     if (s_spoke_layer) layer_mark_dirty(s_spoke_layer);
 }
@@ -361,6 +424,26 @@ static void bg_update_proc(Layer *layer, GContext *ctx)
         moveLayer((Layer*)m_spbmLayer, layer, surpQuadrant);
         m_sptimer1 = app_timer_register(PIC_SHOW_INTERVAL, (AppTimerCallback) hidePic, NULL);
     }
+
+    if ((m_nVibes & MASKV_HOURLY) //option enabled to vibrate hourly
+        && (min == 0)) //hourly mark reached
+    {
+        int from = (m_nVibes & MASKV_FROM) >> 8,
+            to = m_nVibes & MASKV_TO;
+        bool bShake = false;
+        if (from <= to)
+        {
+            bShake = (hr >= from) && (hr <= to);
+        }
+        else
+        {
+            bShake = (hr >= from) || (hr <= to);
+        }
+        if (bShake)
+        {
+            vibes_double_pulse();
+        }
+    }
 }
 
 //2. 2nd layer contains date & hour text
@@ -489,10 +572,34 @@ static void window_unload(Window *window) {
     app_timer_cancel(m_sptimer1);
 }
 
+void readConfig()
+{
+    if (persist_exists(KEY_VIBES))
+    {
+        m_nVibes = persist_read_int(KEY_VIBES);
+    }
+}
+
+void saveConfig()
+{
+    persist_write_int(KEY_VIBES, m_nVibes);
+}
+
 //
 //Window setup sutff
 //
 static void init() {
+#ifndef DISABLE_CONFIG
+    readConfig();
+    // Register callbacks
+    app_message_register_inbox_received(inbox_received_callback);
+    app_message_register_inbox_dropped(inbox_dropped_callback);
+    app_message_register_outbox_failed(outbox_failed_callback);
+    app_message_register_outbox_sent(outbox_sent_callback);
+    // Open AppMessage
+    app_message_open(app_message_inbox_size_maximum(), app_message_outbox_size_maximum());
+#endif
+
     window = window_create();
     window_set_window_handlers(window, (WindowHandlers) {
         .load = window_load,
@@ -521,7 +628,15 @@ static void init() {
 }
 
 static void deinit() {
+    bluetooth_connection_service_unsubscribe();
+    battery_state_service_unsubscribe();
     tick_timer_service_unsubscribe();
+
+#ifndef DISABLE_CONFIG
+    app_message_deregister_callbacks();
+    saveConfig();
+#endif
+
     window_destroy(window);
 }
 

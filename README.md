@@ -20,6 +20,11 @@ Inspired by [Chromatick](http://chromatickface.tumblr.com/concept).
     * spoke rim thickness of 1 to 5 for 5 battery levels of <20% to 100%.
 4. Random image popup at least once every hour.
 
+## Vibes
+Optional vibrations for:
+    * Bluetooth connection lost: fading vibe.
+    * Hourly chirp. Default: Off, 10am to 8pm.
+
 ### Screenshots
 ![screenshot 1](https://raw.githubusercontent.com/sdneon/NoHands/master/store/pebble-screenshot-1-AM.png "Watch face: AM, bluetooth connected, battery not charging")
 Watch face: AM, bluetooth connected, battery not charging
@@ -31,6 +36,10 @@ Watch face: AM, bluetooth disconnected, battery charging
 Watch face: PM, bluetooth connected, battery low & not charging
 
 ## Changelog
+* 1.4
+  * Added optional vibes for:
+    * Bluetooth connection lost: fading vibe.
+    * Hourly chirp. Default: Off, 10am to 8pm.
 * v1.3
   * Hour is outlined so that it will be easier to see at all times.
   * Random (once every hour, and upon startup) surprise image popup for fun.
@@ -41,3 +50,6 @@ Watch face: PM, bluetooth connected, battery low & not charging
     * Date is now always drawn in contrasting colour from background.
 * v1.1
   * Initial release.
+
+##TODO
+* Add weather?
