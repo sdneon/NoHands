@@ -36,7 +36,7 @@ Watch face: AM, bluetooth disconnected, battery charging
 Watch face: PM, bluetooth connected, battery low & not charging
 
 ## Changelog
-* 1.4
+* v1.4
   * Added optional vibes for:
     * Bluetooth connection lost: fading vibe.
     * Hourly chirp. Default: Off, 10am to 8pm.
