@@ -4,8 +4,9 @@
   </head>
   <script src="http://code.jquery.com/jquery-latest.min.js" type="text/javascript"></script>
   <script>
-var VER_CUR = 14,
+var VER_CUR = 15,
 	VER_VIBES_MIN = 14,
+	VER_WEATHER_MIN = 15,
     //masks for vibes:
     MASKV_BTDC = 0x20000,
     MASKV_HOURLY = 0x10000,
@@ -36,11 +37,38 @@ function onVibesHourlyChanged()
     $("#vibe_end_select").prop('disabled', !enabled);
 }
 
+function onWeaUseGpsChanged()
+{
+    var enabled = $("#cbWeaUseGps").is(":checked");
+    $("#cbWeaLocation").prop('disabled', enabled);
+}
+
+function onWeatherChanged()
+{
+    var enabled = $("#cbWeather").is(":checked");
+    $("#wea_interval").prop('disabled', !enabled);
+    $("#cbWeaUseGps").prop('disabled', !enabled);
+    $('input[name=weaUnits]').attr('disabled', !enabled);
+    if (!enabled)
+    {
+    	$("#cbWeaLocation").prop('disabled', true);
+    }
+    else
+    {
+    	onWeaUseGpsChanged();
+	}
+}
+
 function onLoad()
 {
     //parseInt returns NaN if not numeric
     var ver = parseInt(getQueryParam('ver'), 10),
         vibes = parseInt(getQueryParam('vibes'), 16),
+        weather = getQueryParam('weather', false) === 'true',
+        gps = getQueryParam('gps', false) === 'true',
+        location = getQueryParam('location', ''),
+        units = getQueryParam('units', 'c'),
+        interval = parseInt(getQueryParam('interval', 1800000), 10),
         selector;
     if (isNaN(ver))
     {
@@ -69,6 +97,27 @@ function onLoad()
         selector.prop('selected', true);
     }
     onVibesHourlyChanged();
+    if (ver < VER_WEATHER_MIN)
+    {
+        $("#cbWeather").prop('disabled', true);
+        $("#wea_interval").prop('disabled', true);
+        $("#cbWeaUseGps").prop('disabled', true);
+        $("#cbWeaLocation").prop('disabled', true);
+    }
+    else
+    {
+    	//enable/disable weather
+    	$("#cbWeather").prop('checked', !!weather);
+		$("#cbWeaUseGps").prop('checked', !!gps);
+        selector = $("#wea_interval option[value='" + interval + "']");
+        selector.prop('selected', true);
+        if (location && (location.length > 0))
+        {
+        	$("#cbWeaLocation").val(location);
+		}
+        selector = $('input:radio[name="weaUnits"][value="' + units + '"]').prop('checked', true);
+    }
+    onWeatherChanged();
 }
   </script>
   <body bgcolor="#47484B" onload="onLoad()">
@@ -135,8 +184,22 @@ function onLoad()
           <option value="23">11 PM</option>
         </select>
     </p>
+</div><hr>
+<div id='divWeather'>
+    <h4>Weather</h4>
+    <input type="checkbox" id="cbWeather" onchange="onWeatherChanged()">Enable weather.<br>
+	Update Interval:
+	<select id="wea_interval">
+	  <option value="900000">15 mins</option>
+	  <option value="1800000">30 mins</option>
+	  <option value="3600000">1 hr</option>
+	  <option value="7200000">2 hrs</option>
+	</select>
+    <p><input type="checkbox" id="cbWeaUseGps" onchange="onWeaUseGpsChanged()">Use GPS<br>
+    Use Location:<input type="textbox" id="cbWeaLocation" placeholder="Antarctica">
+	<p>Temperature in:<input type="radio" name="weaUnits" value="c" checked>&#x00b0;C
+	<input type="radio" name="weaUnits" value="f">&#x00b0;F<br>
 </div>
-
     <p>
     <button id="save_button">Save</button>
     </p>
@@ -157,7 +220,12 @@ function onLoad()
         }
 
         return {
-			vibes: vibes
+			vibes: vibes,
+			weather: $("#cbWeather").prop('checked')? 1: 0,
+			gps: $("#cbWeaUseGps").prop('checked')? 1: 0,
+			location: $("#cbWeaLocation").val(),
+			interval: parseInt($("#wea_interval").val(), 10),
+			units: $('input[name=weaUnits]:checked').val()
 		};
       };
       var submitButton = document.getElementById("save_button");
@@ -165,7 +233,6 @@ function onLoad()
         function() {
           var options = saveOptions();
           var location = "pebblejs://close#" + encodeURIComponent(JSON.stringify(options));
-
           document.location = location;
         },
       false);

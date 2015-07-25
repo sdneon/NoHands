@@ -36,6 +36,8 @@ Watch face: AM, bluetooth disconnected, battery charging
 Watch face: PM, bluetooth connected, battery low & not charging
 
 ## Changelog
+* v1.5 work-in-progress
+  * Add optional weather.
 * v1.4
   * Added optional vibes for:
     * Bluetooth connection lost: fading vibe.
@@ -51,5 +53,11 @@ Watch face: PM, bluetooth connected, battery low & not charging
 * v1.1
   * Initial release.
 
-##TODO
-* Add weather?
+### TODO
+* Weather:
+  * Add temperature.
+  * Redo icons- style & transparency.
+  * Move update code out of app message handler, so that handler will be free to handle next incoming message soon. (Currently, delaying JS weather update by 1/2 sec to avoid ERROR 64-APP_MSG_BUSY.)
+  
+## Credits
+Thanks to sample weather codes & icons from tallerthenyou's [Simple Weather watchface](https://github.com/tallerthenyou/simplicity-with-day) and alexsum's [Timely watchface ](https://github.com/cynorg/PebbleTimely).
