@@ -1,7 +1,7 @@
 No Hands
 ========
 
-Simple analogue watch with coloured sectors and hour hint for Pebble Time. (Colour, Analogue).
+Simple analogue watch with coloured sectors and hour hint for Pebble Time. (Colour, Analogue, Configurable). Now with optional vibrations & weather.
 
 Inspired by [Chromatick](http://chromatickface.tumblr.com/concept).
 
@@ -11,14 +11,19 @@ Inspired by [Chromatick](http://chromatickface.tumblr.com/concept).
   * Black: AM.
 2. Day of week & date (DDMM) in 2 rows.
 3. Middle spoke indicator for bluetooth connectivity & battery level.
-  1. bluetooth indicated by colour of centre:
+   1. bluetooth indicated by colour of centre:
     * White: connected,
     * Pink: disconnected.
-  2. battery level:
+   2. battery level:
     * Red: charging
     * Black: draining.
     * spoke rim thickness of 1 to 5 for 5 battery levels of <20% to 100%.
 4. Random image popup at least once every hour.
+5. Optional weather info using Yahoo Weather data: weather condition and temperature.
+ * Location (using GPS or predefined locaiton), update interval and temperature units are configurable.
+ * Yahoo has 47 different weather conditions. Several similar ones with differing adjectives like- isolated, scattered.
+   * Isolated is ~10-20% coverage (area affected), and depicted by weather icon in the far distance (so it's partly cropped/clipped).
+   * Scattered is ~30-50% coverage, and depicted by weather icon in middle distance (less cropping than for _isolated_).
 
 ## Vibes
 Optional vibrations for:
@@ -36,6 +41,9 @@ Watch face: AM, bluetooth disconnected, battery charging
 Watch face: PM, bluetooth connected, battery low & not charging
 
 ## Changelog
+* v1.5
+  * Add optional weather: condition icon & temperature.
+    * 47 icons for Yahoo Weather conditions. Extended many of them from [Timely watchface icons' ](https://github.com/cynorg/PebbleTimely) style.
 * v1.4
   * Added optional vibes for:
     * Bluetooth connection lost: fading vibe.
@@ -51,5 +59,10 @@ Watch face: PM, bluetooth connected, battery low & not charging
 * v1.1
   * Initial release.
 
-##TODO
-* Add weather?
+### TODO
+* Weather:
+  * Move update code out of app message handler, so that handler will be free to handle next incoming message soon. (Currently, delaying JS weather update by 1 sec to avoid ERROR 64-APP_MSG_BUSY.)
+  * Add black set of weather icons for light background?
+
+## Credits
+Thanks to sample weather codes & icons from tallerthenyou's [Simple Weather watchface](https://github.com/tallerthenyou/simplicity-with-day) and alexsum's [Timely watchface ](https://github.com/cynorg/PebbleTimely).
