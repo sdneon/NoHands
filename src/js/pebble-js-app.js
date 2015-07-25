@@ -13,84 +13,77 @@ var VERSION = 15,   //i.e. v1.4; for sending to config page
     MASKV_HOURLY = 0x10000,
     MASKV_FROM = 0xFF00,
     MASKV_TO = 0x00FF,
-    vibes = 0,
-    KEY_WEATHER = 'weather',
+    KEY_OPTIONS_VIBES = 0,
+    //weather stuff
+    WEATHER_NA = 3200,
+    WEATHER_NA_ICON_ID = 48,
+    KEY_OPTIONS_WEATHER = 'weather',
+    KEY_WEATHER_LAST = 'lastweather',
+    ONE_DAY_IN_MS = 86400000,
     UNIT_TEMPERATURE = {
         c: "\u00B0C",
         f: "\u00B0F"
     },
-    timer;
-
-var CLEAR_DAY = 0;
-var CLEAR_NIGHT = 1;
-var WINDY = 2;
-var COLD = 3;
-var PARTLY_CLOUDY_DAY = 4;
-var PARTLY_CLOUDY_NIGHT = 5;
-var HAZE = 6;
-var CLOUD = 7;
-var RAIN = 8;
-var SNOW = 9;
-var HAIL = 10;
-var CLOUDY = 11;
-var STORM = 12;
-var NA = 13;
-
-var imageId = {
-  0 : STORM, //tornado
-  1 : STORM, //tropical storm
-  2 : STORM, //hurricane
-  3 : STORM, //severe thunderstorms
-  4 : STORM, //thunderstorms
-  5 : HAIL, //mixed rain and snow
-  6 : HAIL, //mixed rain and sleet
-  7 : HAIL, //mixed snow and sleet
-  8 : HAIL, //freezing drizzle
-  9 : RAIN, //drizzle
-  10 : HAIL, //freezing rain
-  11 : RAIN, //showers
-  12 : RAIN, //showers
-  13 : SNOW, //snow flurries
-  14 : SNOW, //light snow showers
-  15 : SNOW, //blowing snow
-  16 : SNOW, //snow
-  17 : HAIL, //hail
-  18 : HAIL, //sleet
-  19 : HAZE, //dust
-  20 : HAZE, //foggy
-  21 : HAZE, //haze
-  22 : HAZE, //smoky
-  23 : WINDY, //blustery
-  24 : WINDY, //windy
-  25 : COLD, //cold
-  26 : CLOUDY, //cloudy
-  27 : CLOUDY, //mostly cloudy (night)
-  28 : CLOUDY, //mostly cloudy (day)
-  29 : PARTLY_CLOUDY_NIGHT, //partly cloudy (night)
-  30 : PARTLY_CLOUDY_DAY, //partly cloudy (day)
-  31 : CLEAR_NIGHT, //clear (night)
-  32 : CLEAR_DAY, //sunny
-  33 : CLEAR_NIGHT, //fair (night)
-  34 : CLEAR_DAY, //fair (day)
-  35 : HAIL, //mixed rain and hail
-  36 : CLEAR_DAY, //hot
-  37 : STORM, //isolated thunderstorms
-  38 : STORM, //scattered thunderstorms
-  39 : STORM, //scattered thunderstorms
-  40 : STORM, //scattered showers
-  41 : SNOW, //heavy snow
-  42 : SNOW, //scattered snow showers
-  43 : SNOW, //heavy snow
-  44 : CLOUD, //partly cloudy
-  45 : STORM, //thundershowers
-  46 : SNOW, //snow showers
-  47 : STORM, //isolated thundershowers
-  3200 : NA //not available
-};
+    UNIT_TEMPERATURE_OLD = { //temperature units with 'degree' symbol indicates old data
+        c: " C",
+        f: " F"
+    },
+    timer,
+    lastWeatherUpdateTime = 0,
+    lastWeatherId = WEATHER_NA_ICON_ID,
+    lastWeatherTemp = NaN,
+    lastWeatherTempUnit = 'c';
 
 //
 // Weather stuff
 //
+function saveWeather()
+{
+    var data = {
+        time: lastWeatherUpdateTime,
+        cond: lastWeatherId,
+        temp: lastWeatherTemp,
+        unit: lastWeatherTempUnit
+    };
+    localStorage.setItem(KEY_WEATHER_LAST, JSON.stringify(data));
+}
+
+function loadLastWeather()
+{
+    var data = localStorage.getItem(KEY_WEATHER_LAST),
+        curTime;
+    if (data !== undefined)
+    {
+        data = JSON.parse(data);
+    }
+    if (isNaN(data.time) || (data.time === 0) || !data.time)
+    {
+        return false; //no old data available
+    }
+    curTime = (new Date()).getTime();
+    if (((curTime - data.time) >= ONE_DAY_IN_MS) || (data.time > curTime))
+    {
+        return false; //reject old data (over a day old) or invalid future time
+    }
+    lastWeatherUpdateTime = data.time || 0;
+    lastWeatherId = (data.cond !== undefined)? data.cond: WEATHER_NA_ICON_ID;
+    lastWeatherTemp = (data.temp !== undefined)? data.temp: NaN;
+    lastWeatherTempUnit = data.unit || 'c';
+    return true;
+}
+
+function sendLastWeather()
+{
+    var ok = loadLastWeather();
+    if (ok)
+    {
+        Pebble.sendAppMessage({
+            weather: watchConfig.weather? 1: 0,
+            icon: lastWeatherId,
+            temperature: (!isNaN(lastWeatherTemp))? (lastWeatherTemp + UNIT_TEMPERATURE_OLD[lastWeatherTempUnit]): "NA"
+        });
+    }
+}
 
 function getWeatherFromWoeid(woeid) {
     var query = encodeURI("select item.condition from weather.forecast where woeid = " + woeid +
@@ -98,19 +91,40 @@ function getWeatherFromWoeid(woeid) {
         url = "http://query.yahooapis.com/v1/public/yql?format=json&q=" + query,
         req = new XMLHttpRequest();
 
+    req.timeout = 30000;
+    req.ontimeout = function() {
+        sendLastWeather();
+    };
     req.open('GET', url, true);
     req.onload = function(e) {
-        if (req.readyState === 4) {
-            if (req.status === 200) {
+        if (req.readyState === 4)
+        {
+            if (req.status === 200)
+            {
                 var response = JSON.parse(req.responseText),
                     condition, temperature, icon;
-                if (response) {
+                if (response)
+                {
                     condition = response.query.results.channel.item.condition;
                     temperature = condition.temp + UNIT_TEMPERATURE[watchConfig.units];
-                    icon = imageId[condition.code];
+                    condition.code = parseInt(condition.code, 10);
+                    if (isNaN(condition.code) || (condition.code === WEATHER_NA))
+                    {
+                        icon = WEATHER_NA_ICON_ID;
+                    }
+                    else
+                    {
+                        icon = condition.code;
+                    }
                      console.log("temp " + temperature);
                      console.log("icon " + icon);
                      console.log("condition " + condition.text);
+                    //backup weather update
+                    lastWeatherUpdateTime = (new Date()).getTime();
+                    lastWeatherId = condition.code;
+                    lastWeatherTemp = parseInt(condition.temp, 10);
+                    lastWeatherTempUnit = watchConfig.units;
+                    saveWeather();
                     Pebble.sendAppMessage({
                         weather: watchConfig.weather? 1: 0,
                         icon : icon,
@@ -119,6 +133,7 @@ function getWeatherFromWoeid(woeid) {
                 }
             } else {
                 console.log("Error");
+                sendLastWeather();
             }
         }
     };
@@ -195,7 +210,7 @@ function locationError(err)
     console.warn('location error (' + err.code + '): ' + err.message);
     Pebble.sendAppMessage({
         weather: watchConfig.weather? 1: 0,
-        icon: 11,
+        icon: WEATHER_NA_ICON_ID,
         temperature: ""
     });
 }
@@ -225,7 +240,7 @@ function updateWeather()
 //Load saved config from localStorage
 function loadConfig()
 {
-    var data = localStorage.getItem(KEY_WEATHER);
+    var data = localStorage.getItem(KEY_OPTIONS_WEATHER);
     if (data !== undefined)
     {
         data = JSON.parse(data);
@@ -237,7 +252,7 @@ function loadConfig()
         units: 'c',
         interval: 1800000 // 30 minutes
     };
-    data = parseInt(localStorage.getItem(vibes), 10);
+    data = parseInt(localStorage.getItem(KEY_OPTIONS_VIBES), 10);
     if (isNaN(data))
     {
         data = DEF_VIBES;
@@ -248,8 +263,8 @@ function loadConfig()
 //Save config to localStorage
 function saveConfig()
 {
-    localStorage.setItem(vibes, watchConfig.vibes);
-    localStorage.setItem(KEY_WEATHER, JSON.stringify(watchConfig));
+    localStorage.setItem(KEY_OPTIONS_VIBES, watchConfig.vibes);
+    localStorage.setItem(KEY_OPTIONS_WEATHER, JSON.stringify(watchConfig));
 }
 
 function sendOptions(options)

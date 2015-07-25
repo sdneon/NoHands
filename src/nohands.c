@@ -81,7 +81,8 @@ static const int PIC_ID[MAX_PICS] = {
     RESOURCE_ID_IMAGE_6
 };
 
-static const uint32_t WEATHER_ICONS = RESOURCE_ID_CLEAR_DAY;
+static const int WEATHER_ICONS = RESOURCE_ID_WEATHER00;
+#define WEATHER_NA_ICON_ID 48
 
 /**
  * The (empty) quadrants in which to place the date & surprise pic displays respectively.
@@ -150,6 +151,7 @@ int lastSurpriseHr = -1, nextSurpriseMin = -1, surpriseShownCnt = 0;
 bool m_bSupriseShowing = false;
 
 static int m_nVibes = DEF_VIBES;
+static time_t m_nLastHourlyShake = 0;
 // Vibe pattern for loss of BT connection: ON for 400ms, OFF for 100ms, ON for 300ms, OFF 100ms, 100ms:
 static const uint32_t const VIBE_SEG_BT_LOSS[] = { 400, 200, 200, 400, 100 };
 static const VibePattern VIBE_PAT_BT_LOSS = {
@@ -157,7 +159,7 @@ static const VibePattern VIBE_PAT_BT_LOSS = {
   .num_segments = ARRAY_LENGTH(VIBE_SEG_BT_LOSS),
 };
 static bool m_bWeatherEnabled = false;
-static int m_nIconId = 13;
+static int m_nIconId = WEATHER_NA_ICON_ID;
 static char *m_szTemp = ""; //temperature string
 
 //forward declaration
@@ -216,7 +218,6 @@ static void inbox_received_callback(DictionaryIterator *iterator, void *context)
                     {
                         bitmap_layer_set_bitmap(m_spbmLayerW, m_spbmPicWeather);
                     }
-
                     bUpdateWeather = true;
                 }
                 break;
@@ -501,7 +502,8 @@ static void bg_update_proc(Layer *layer, GContext *ctx)
     }
 
     if ((m_nVibes & MASKV_HOURLY) //option enabled to vibrate hourly
-        && (min == 0)) //hourly mark reached
+        && (min == 0) //hourly mark reached
+        && (m_nLastHourlyShake != now)) //sometimes update proc gets called several times in the same min, so shake only once!
     {
         int from = (m_nVibes & MASKV_FROM) >> 8,
             to = m_nVibes & MASKV_TO;
@@ -516,6 +518,7 @@ static void bg_update_proc(Layer *layer, GContext *ctx)
         }
         if (bShake)
         {
+            m_nLastHourlyShake = now;
             vibes_double_pulse();
         }
     }
