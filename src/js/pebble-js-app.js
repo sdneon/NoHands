@@ -286,9 +286,9 @@ Pebble.addEventListener('webviewclosed',
         sendOptions(watchConfig);
         saveConfig();
 
-        setTimeout(function() {
+        setTimeout(function() { //delay to avoid APP_MSG_BUSY Error 64, as it comes too close to config update msg
             updateWeather();
-        }, 500);
+        }, 1000);
 
         if (!watchConfig.weather)
         {

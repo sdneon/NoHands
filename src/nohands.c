@@ -132,7 +132,7 @@ static const int OFFSET_OUTLINE[5][2] = {
 
 static Window *window;
 static Layer *s_simple_bg_layer, *s_date_layer, *s_spoke_layer, *m_sLayerWeather;
-static TextLayer *s_day_label, *s_hour_label[5];
+static TextLayer *s_day_label, *s_hour_label[5], *m_stxtWeather;
 static BitmapLayer *m_spbmLayer, *m_spbmLayerW;
 static GBitmap *m_spbmPics[MAX_PICS] = {0};
 static GBitmap *m_spbmPicWeather = NULL;
@@ -147,6 +147,7 @@ int dateQuadrant = 0, //which quadrant to put date in: 0: NE, 1, SE, 2: SW, 3: N
 bool surpQuadrantUseApc = false,
     dateQuadrantUseApc = false;
 int lastSurpriseHr = -1, nextSurpriseMin = -1, surpriseShownCnt = 0;
+bool m_bSupriseShowing = false;
 
 static int m_nVibes = DEF_VIBES;
 // Vibe pattern for loss of BT connection: ON for 400ms, OFF for 100ms, ON for 300ms, OFF 100ms, 100ms:
@@ -161,6 +162,7 @@ static char *m_szTemp = ""; //temperature string
 
 //forward declaration
 void moveLayer(Layer *layer, Layer *refLayer, int quad);
+void moveLayer2(Layer *layer, Layer *refLayer, int quad, bool show);
 
 //
 //Configuration stuff via AppMessage API
@@ -184,7 +186,7 @@ static void inbox_received_callback(DictionaryIterator *iterator, void *context)
     // Process all pairs present
     while(t != NULL) {
         // Process this pair's key
-        APP_LOG(APP_LOG_LEVEL_DEBUG, "Key:%d received with value:%d", (int)t->key, (int)t->value->int32);
+        //APP_LOG(APP_LOG_LEVEL_DEBUG, "Key:%d received with value:%d", (int)t->key, (int)t->value->int32);
         switch (t->key) {
             case KEY_VIBES:
                 nNewValue = t->value->int32;
@@ -198,14 +200,13 @@ static void inbox_received_callback(DictionaryIterator *iterator, void *context)
                 if (m_bWeatherEnabled != bNewValue)
                 {
                     m_bWeatherEnabled = bNewValue;
-                    layer_set_hidden(m_sLayerWeather, !m_bWeatherEnabled);
+                    layer_set_hidden(m_sLayerWeather, m_bSupriseShowing || !m_bWeatherEnabled);
                 }
                 break;
             case KEY_ICON:
                 nNewValue = t->value->int32;
                 if (m_nIconId != nNewValue)
                 {
-APP_LOG(APP_LOG_LEVEL_DEBUG, "Change icon: %d", heap_bytes_free());
                     gbitmap_destroy(m_spbmPicWeather);
                     m_spbmPicWeather = NULL;
 
@@ -215,12 +216,9 @@ APP_LOG(APP_LOG_LEVEL_DEBUG, "Change icon: %d", heap_bytes_free());
                     {
                         bitmap_layer_set_bitmap(m_spbmLayerW, m_spbmPicWeather);
                     }
-else APP_LOG(APP_LOG_LEVEL_DEBUG, "XXX Failed to load icon: %d", heap_bytes_free());
-                    //moveLayer((Layer*)m_spbmLayerW, s_simple_bg_layer, 0); //surpQuadrant);
 
                     bUpdateWeather = true;
                 }
-else APP_LOG(APP_LOG_LEVEL_DEBUG, "SAME icon: %d", heap_bytes_free());
                 break;
             case KEY_TEMP:
                 m_szTemp = t->value->cstring;
@@ -233,10 +231,10 @@ else APP_LOG(APP_LOG_LEVEL_DEBUG, "SAME icon: %d", heap_bytes_free());
     }
     if (bUpdateWeather)
     {
-        //TODO: update weather icon
-        APP_LOG(APP_LOG_LEVEL_DEBUG, "weather update: %d %s", m_nIconId, m_szTemp);
-        moveLayer((Layer*)m_spbmLayerW, s_simple_bg_layer, surpQuadrant);
-        layer_mark_dirty((Layer*)m_spbmLayerW);
+        //update weather icon
+        text_layer_set_text(m_stxtWeather, m_szTemp);
+        moveLayer2(m_sLayerWeather, s_simple_bg_layer, surpQuadrant, !m_bSupriseShowing && m_bWeatherEnabled);
+        layer_mark_dirty(m_sLayerWeather);
     }
 }
 
@@ -283,9 +281,11 @@ void hidePic(void *a_pData)
 {
     //layer_set_frame((Layer*)m_spbmLayer, GRect(0,0,0,0));
     layer_set_hidden((Layer*)m_spbmLayer, true);
+    m_bSupriseShowing = false;
+    layer_set_hidden(m_sLayerWeather, !m_bWeatherEnabled);
 }
 
-void moveLayer(Layer *layer, Layer *refLayer, int quad)
+void moveLayer2(Layer *layer, Layer *refLayer, int quad, bool show)
 {
     GRect bounds = layer_get_bounds(window_get_root_layer(window));
     int winHalfWidth = bounds.size.w / 2,
@@ -313,7 +313,15 @@ void moveLayer(Layer *layer, Layer *refLayer, int quad)
             break;
     }
     layer_set_frame(layer, frame);
-    layer_set_hidden(layer, false);
+    if (show)
+    {
+        layer_set_hidden(layer, false);
+    }
+}
+
+void moveLayer(Layer *layer, Layer *refLayer, int quad)
+{
+    moveLayer2(layer, refLayer, quad, true);
 }
 
 //1. Base layer contains coloured analogue watch face
@@ -479,17 +487,19 @@ static void bg_update_proc(Layer *layer, GContext *ctx)
         {
             ++surpriseShownCnt;
         }
+        m_bSupriseShowing = true;
+        layer_set_hidden(m_sLayerWeather, true);
         bitmap_layer_set_bitmap(m_spbmLayer, m_spbmPics[rand() % MAX_PICS]);
         //move surprise pic to appropriate quadrant:
         moveLayer((Layer*)m_spbmLayer, layer, surpQuadrant);
         m_sptimer1 = app_timer_register(PIC_SHOW_INTERVAL, (AppTimerCallback) hidePic, NULL);
     }
-/*
+
     if (m_bWeatherEnabled)
     {
-        moveLayer((Layer*)m_spbmLayerW, layer, surpQuadrant);
+        moveLayer2((Layer*)m_sLayerWeather, layer, surpQuadrant, !m_bSupriseShowing && m_bWeatherEnabled);
     }
-*/
+
     if ((m_nVibes & MASKV_HOURLY) //option enabled to vibrate hourly
         && (min == 0)) //hourly mark reached
     {
@@ -532,6 +542,18 @@ static void date_update_proc(Layer *layer, GContext *ctx)
 #endif
 
     moveLayer((Layer*)s_day_label, (Layer*)s_day_label, dateQuadrant);
+}
+
+//4. 4th weather layer
+static void weather_update_proc(Layer *layer, GContext *ctx)
+{
+    text_layer_set_text_color(m_stxtWeather,
+        surpQuadrantUseApc?
+#ifdef INVERT_COLOURS
+            GColorWhite: GColorBlack);
+#else
+            GColorBlack: GColorWhite);
+#endif
 }
 
 //3. 3rd layer contains the bluetooth & battery indicator
@@ -606,13 +628,21 @@ static void window_load(Window *window) {
     //4. Weather pic layer
     m_sLayerWeather = layer_create(bounds);
     layer_add_child(window_layer, m_sLayerWeather);
-    m_spbmLayerW = bitmap_layer_create(bounds);
+    m_spbmLayerW = bitmap_layer_create(GRect(0, -11, bounds.size.w, bounds.size.h)); //bounds);
     m_spbmPicWeather = gbitmap_create_with_resource(WEATHER_ICONS + m_nIconId);
     bitmap_layer_set_background_color(m_spbmLayerW, GColorClear);
     bitmap_layer_set_compositing_mode(m_spbmLayerW, GCompOpSet);
     bitmap_layer_set_bitmap(m_spbmLayerW, m_spbmPicWeather);
     layer_add_child(m_sLayerWeather, bitmap_layer_get_layer(m_spbmLayerW));
-    layer_set_hidden(m_sLayerWeather, !m_bWeatherEnabled);
+    layer_set_hidden(m_sLayerWeather, true);
+    m_stxtWeather = text_layer_create(GRect(36, 85, textWidth, 60));
+    text_layer_set_text(m_stxtWeather, m_szTemp);
+    text_layer_set_background_color(m_stxtWeather, GColorClear);
+    text_layer_set_text_color(m_stxtWeather, GColorWhite);
+    text_layer_set_font(m_stxtWeather, fonts_get_system_font(FONT_KEY_GOTHIC_24_BOLD));
+    text_layer_set_text_alignment(m_stxtWeather, GTextAlignmentCenter);
+    layer_add_child(m_sLayerWeather, text_layer_get_layer(m_stxtWeather));
+    layer_set_update_proc(m_sLayerWeather, weather_update_proc);
 
     //5. Surprise pic layer
     m_spbmLayer = bitmap_layer_create(bounds);

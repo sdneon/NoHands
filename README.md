@@ -37,7 +37,7 @@ Watch face: PM, bluetooth connected, battery low & not charging
 
 ## Changelog
 * v1.5 work-in-progress
-  * Add optional weather.
+  * Add optional weather: condition icon & temperature.
 * v1.4
   * Added optional vibes for:
     * Bluetooth connection lost: fading vibe.
@@ -55,8 +55,7 @@ Watch face: PM, bluetooth connected, battery low & not charging
 
 ### TODO
 * Weather:
-  * Add temperature.
-  * Redo icons- style & transparency.
+  * Add full set of icons?
   * Move update code out of app message handler, so that handler will be free to handle next incoming message soon. (Currently, delaying JS weather update by 1/2 sec to avoid ERROR 64-APP_MSG_BUSY.)
   
 ## Credits
