@@ -20,6 +20,7 @@ var VERSION = 15,   //i.e. v1.4; for sending to config page
     KEY_OPTIONS_WEATHER = 'weather',
     KEY_WEATHER_LAST = 'lastweather',
     ONE_DAY_IN_MS = 86400000,
+    INTERVAL_TIMEOUT = 10000, //in ms, i.e. 10s
     UNIT_TEMPERATURE = {
         c: "\u00B0C",
         f: "\u00B0F"
@@ -80,7 +81,7 @@ function sendLastWeather()
         Pebble.sendAppMessage({
             weather: watchConfig.weather? 1: 0,
             icon: lastWeatherId,
-            temperature: (!isNaN(lastWeatherTemp))? (lastWeatherTemp + UNIT_TEMPERATURE_OLD[lastWeatherTempUnit]): "NA"
+            temperature: (!isNaN(lastWeatherTemp))? ('' + lastWeatherTemp + UNIT_TEMPERATURE_OLD[lastWeatherTempUnit]): "NA"
         });
     }
 }
@@ -91,7 +92,7 @@ function getWeatherFromWoeid(woeid) {
         url = "http://query.yahooapis.com/v1/public/yql?format=json&q=" + query,
         req = new XMLHttpRequest();
 
-    req.timeout = 30000;
+    req.timeout = INTERVAL_TIMEOUT;
     req.ontimeout = function() {
         sendLastWeather();
     };
@@ -130,11 +131,11 @@ function getWeatherFromWoeid(woeid) {
                         icon : icon,
                         temperature : temperature
                     });
+                    return;
                 }
-            } else {
-                console.log("Error");
-                sendLastWeather();
             }
+            console.log("Error");
+            sendLastWeather();
         }
     };
     req.send(null);
@@ -145,6 +146,11 @@ function getWeatherFromLatLong(latitude, longitude)
     var query = encodeURI("select woeid from geo.placefinder where text=\""+latitude+","+longitude + "\" and gflags=\"R\""),
         url = "http://query.yahooapis.com/v1/public/yql?q=" + query + "&format=json",
         req = new XMLHttpRequest();
+
+    req.timeout = INTERVAL_TIMEOUT;
+    req.ontimeout = function() {
+        sendLastWeather();
+    };
     req.open('GET', url, true);
     req.onload = function(e) {
         if (req.readyState === 4)
@@ -157,12 +163,11 @@ function getWeatherFromLatLong(latitude, longitude)
                 {
                     woeid = response.query.results.Result.woeid;
                     getWeatherFromWoeid(woeid);
+                    return;
                 }
             }
-            else
-            {
-                console.log("Error");
-            }
+            console.log("Error");
+            sendLastWeather();
         }
     };
     req.send(null);
@@ -173,25 +178,29 @@ function getWeatherFromLocation(location_name)
     var query = encodeURI("select woeid from geo.places(1) where text=\"" + location_name + "\""),
         url = "http://query.yahooapis.com/v1/public/yql?q=" + query + "&format=json",
         req = new XMLHttpRequest();
+
+    req.timeout = INTERVAL_TIMEOUT;
+    req.ontimeout = function() {
+        sendLastWeather();
+    };
     req.open('GET', url, true);
     req.onload = function(e) {
         if (req.readyState === 4)
         {
             if (req.status === 200)
             {
-                 console.log(req.responseText);
+                //console.log(req.responseText);
                 var response = JSON.parse(req.responseText),
                     woeid;
                 if (response)
                 {
                     woeid = response.query.results.place.woeid;
                     getWeatherFromWoeid(woeid);
+                    return;
                 }
             }
-            else
-            {
-                console.log("Error");
-            }
+            console.log("Error");
+            sendLastWeather();
         }
     };
     req.send(null);
