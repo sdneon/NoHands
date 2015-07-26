@@ -63,6 +63,7 @@ Watch face: PM, bluetooth connected, battery low & not charging
 * Weather:
   * Move update code out of app message handler, so that handler will be free to handle next incoming message soon. (Currently, delaying JS weather update by 1 sec to avoid ERROR 64-APP_MSG_BUSY.)
   * Add black set of weather icons for light background?
+  * In case of no internet access, use cached weather data: partially done. Need to save location and add timeout handlers to various methods.
 
 ## Credits
 Thanks to sample weather codes & icons from tallerthenyou's [Simple Weather watchface](https://github.com/tallerthenyou/simplicity-with-day) and alexsum's [Timely watchface ](https://github.com/cynorg/PebbleTimely).
