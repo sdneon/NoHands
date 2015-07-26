@@ -248,6 +248,21 @@ label.css-label-disabled {
 	display: table-cell;
 	padding-top: 2px; padding-left: 5px;
 }
+
+.textbox-green {
+	background-color:#00FF00;
+	color: black;
+}
+
+.textbox-red {
+	background-color:#FF0000;
+	color: white;
+}
+
+.location-status-fail {
+	background-color:#ff0000;
+	color:#ffffff;
+}
 </style>
   <script src="http://code.jquery.com/jquery-latest.min.js" type="text/javascript"></script>
   <script>
@@ -377,6 +392,63 @@ function onLoad()
     }
     onWeatherChanged();
 }
+
+function locationFailed()
+{
+	$('#cbWeaLocation').removeClass('textbox-green');
+	$('#cbWeaLocation').addClass('textbox-red');
+	$('#txtWeaLocationStatus').html('Failed: Location unknown!');
+	$('#txtWeaLocationStatus').addClass('location-status-fail');
+}
+
+function updateLocation(location_name)
+{
+	$('#cbWeaLocation').val(location_name);
+	$('#cbWeaLocation').removeClass('textbox-red');
+	$('#cbWeaLocation').addClass('textbox-green');
+	$('#txtWeaLocationStatus').html('OK, Location found.');
+	$('#txtWeaLocationStatus').removeClass('location-status-fail');
+}
+
+function checkLocation()
+{
+	var location_name = $('#cbWeaLocation').val(),
+		response, woeid = -1,
+		query = encodeURI("select woeid, name from geo.places(1) where text=\"" + location_name + "\""),
+		url = "http://query.yahooapis.com/v1/public/yql?q=" + query + "&format=json",
+		req = new XMLHttpRequest();
+
+	if (!location_name || (location_name.length <= 0))
+	{
+		locationFailed();
+		return;
+	}
+    req.timeout = 10000;
+    req.ontimeout = function() {
+        locationFailed();;
+    };
+	req.open('GET', url, true);
+	req.onload = function(e) {
+		if (req.readyState === 4)
+		{
+			if (req.status === 200)
+			{
+				//console.log(req.responseText);
+				response = JSON.parse(req.responseText);
+				if (response && response.query && response.query.results
+					 && response.query.results.place
+					 && (response.query.results.place.name !== undefined)
+					 && (response.query.results.place.woeid !== undefined))
+				{
+					updateLocation(response.query.results.place.name);
+					return;
+				}
+			}
+			locationFailed();
+		}
+	};
+	req.send(null);
+}
   </script>
   <body bgcolor="#47484B" onload="onLoad()">
     <font face="helvetica" color="white">
@@ -487,7 +559,7 @@ function onLoad()
 				<span class="onoffswitch-switch onoffswitch-gps-switch"></span>
 			</label>
 	</div><div class="textbox-blue-description">&nbsp;<input type="textbox" id="cbWeaLocation" class="textbox-blue" placeholder="Antarctica"></div>
-    <!-- <br>&nbsp;&nbsp;&nbsp;<button id="test_button" class="saveButton">Test Location</button> -->
+    <br>&nbsp;&nbsp;&nbsp;<button id="test_button" class="saveButton">Check Location</button>&nbsp;&nbsp;<span id="txtWeaLocationStatus"></span>
 	<p>Temperature in:
 	<input type="radio" name="weaUnits" value="c" id="weaUnitC" checked class="css-checkbox">
 	<label for="weaUnitC" class="css-label">&#x00b0;C</label>
@@ -522,8 +594,8 @@ function onLoad()
 			units: $('input[name=weaUnits]:checked').val()
 		};
       };
-      var submitButton = document.getElementById("save_button");
-      submitButton.addEventListener("click",
+      var button = document.getElementById("save_button");
+      button.addEventListener("click",
         function() {
           var options = JSON.stringify(saveOptions());
           if (DEBUG)
@@ -534,7 +606,9 @@ function onLoad()
           var location = "pebblejs://close#" + encodeURIComponent(options);
           document.location = location;
         },
-      false);
+        false);
+      button = document.getElementById("test_button");
+      button.addEventListener("click", checkLocation, false);
     </script>
   </body>
 </html>
