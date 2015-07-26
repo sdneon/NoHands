@@ -200,6 +200,11 @@
 	position:relative;
 	top:1px;
 }
+.saveButton:disabled {
+	background-color:#EEEEEE;
+	color: #333333;
+	border:1px solid #CCCCCC;
+}
 
 /* orange radio button */
 input[type=radio].css-checkbox {
@@ -311,6 +316,10 @@ function onWeatherChanged()
     var enabled = $("#cbWeather").is(":checked");
     $("#wea_interval").prop('disabled', !enabled);
     $("#cbWeaUseGps").prop('disabled', !enabled);
+	$("#test_button").prop('disabled', !enabled);
+	$('#txtWeaLocationStatus').html('');
+	$('#cbWeaLocation').removeClass('textbox-green');
+	$('#cbWeaLocation').removeClass('textbox-red');
     $('input[name=weaUnits]').attr('disabled', !enabled);
     if (enabled)
     {
@@ -375,6 +384,7 @@ function onLoad()
         $("#wea_interval").prop('disabled', true);
         $("#cbWeaUseGps").prop('disabled', true);
         $("#cbWeaLocation").prop('disabled', true);
+        $("#test_button").prop('disabled', true);
         $('label[class="css-label"]').addClass('css-label-disabled');
     }
     else
