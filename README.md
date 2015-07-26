@@ -21,7 +21,7 @@ Inspired by [Chromatick](http://chromatickface.tumblr.com/concept).
 4. Random image popup at least once every hour.
 5. Optional weather info using Yahoo Weather data: weather condition and temperature.
  * Location (using GPS or predefined locaiton), update interval and temperature units are configurable.
- * Yahoo has 47 different weather conditions. Several similar ones with differing adjectives like- isolated, scattered.
+ * Yahoo has 47 different weather conditions. These are listed in this [page](http://yunharla.altervista.org/pebble/weather-codes.html). Several similar ones with differing adjectives like- isolated, scattered.
    * Isolated is ~10-20% coverage (area affected), and depicted by weather icon in the far distance (so it's partly cropped/clipped).
    * Scattered is ~30-50% coverage, and depicted by weather icon in middle distance (less cropping than for _isolated_).
 
