@@ -81,8 +81,9 @@ static const int PIC_ID[MAX_PICS] = {
     RESOURCE_ID_IMAGE_6
 };
 
-static const int WEATHER_ICONS = RESOURCE_ID_WEATHER00;
 #define WEATHER_NA_ICON_ID 48
+static const int WEATHER_ICONS = RESOURCE_ID_WEATHER00;
+static const int WEATHER_ICONS_DARK = RESOURCE_ID_WEATHER00 + WEATHER_NA_ICON_ID + 1;
 
 /**
  * The (empty) quadrants in which to place the date & surprise pic displays respectively.
@@ -136,7 +137,7 @@ static Layer *s_simple_bg_layer, *s_date_layer, *s_spoke_layer, *m_sLayerWeather
 static TextLayer *s_day_label, *s_hour_label[5], *m_stxtWeather;
 static BitmapLayer *m_spbmLayer, *m_spbmLayerW;
 static GBitmap *m_spbmPics[MAX_PICS] = {0};
-static GBitmap *m_spbmPicWeather = NULL;
+static GBitmap *m_spbmPicWeather = NULL, *m_spbmPicWeatherDark = NULL;
 static AppTimer *m_sptimer1;
 
 static char s_day_buffer[15], s_hour_buffer[4];
@@ -165,6 +166,7 @@ static char *m_szTemp = ""; //temperature string
 //forward declaration
 void moveLayer(Layer *layer, Layer *refLayer, int quad);
 void moveLayer2(Layer *layer, Layer *refLayer, int quad, bool show);
+void setWeatherIcon();
 
 //
 //Configuration stuff via AppMessage API
@@ -210,13 +212,16 @@ static void inbox_received_callback(DictionaryIterator *iterator, void *context)
                 if (m_nIconId != nNewValue)
                 {
                     gbitmap_destroy(m_spbmPicWeather);
+                    gbitmap_destroy(m_spbmPicWeatherDark);
                     m_spbmPicWeather = NULL;
+                    m_spbmPicWeatherDark = NULL;
 
                     m_nIconId = nNewValue;
                     m_spbmPicWeather = gbitmap_create_with_resource(WEATHER_ICONS + nNewValue);
-                    if (m_spbmPicWeather != NULL)
+                    m_spbmPicWeatherDark = gbitmap_create_with_resource(WEATHER_ICONS_DARK + nNewValue);
+                    if ((m_spbmPicWeather != NULL) && (m_spbmPicWeatherDark != NULL))
                     {
-                        bitmap_layer_set_bitmap(m_spbmLayerW, m_spbmPicWeather);
+                        setWeatherIcon();
                     }
                     bUpdateWeather = true;
                 }
@@ -276,6 +281,20 @@ BatteryChargeState m_sBattState = {
 static void battery_handler(BatteryChargeState new_state) {
     m_sBattState = new_state;
     if (s_spoke_layer) layer_mark_dirty(s_spoke_layer);
+}
+
+//
+// Graphics stuff
+//
+void setWeatherIcon()
+{
+    bitmap_layer_set_bitmap(m_spbmLayerW,
+        surpQuadrantUseApc?
+#ifdef INVERT_COLOURS
+            m_spbmPicWeather: m_spbmPicWeatherDark);
+#else
+            m_spbmPicWeatherDark: m_spbmPicWeather);
+#endif
 }
 
 void hidePic(void *a_pData)
@@ -557,6 +576,7 @@ static void weather_update_proc(Layer *layer, GContext *ctx)
 #else
             GColorBlack: GColorWhite);
 #endif
+    setWeatherIcon();
 }
 
 //3. 3rd layer contains the bluetooth & battery indicator
@@ -633,9 +653,10 @@ static void window_load(Window *window) {
     layer_add_child(window_layer, m_sLayerWeather);
     m_spbmLayerW = bitmap_layer_create(GRect(0, -11, bounds.size.w, bounds.size.h)); //bounds);
     m_spbmPicWeather = gbitmap_create_with_resource(WEATHER_ICONS + m_nIconId);
+    m_spbmPicWeatherDark = gbitmap_create_with_resource(WEATHER_ICONS_DARK + m_nIconId);
     bitmap_layer_set_background_color(m_spbmLayerW, GColorClear);
     bitmap_layer_set_compositing_mode(m_spbmLayerW, GCompOpSet);
-    bitmap_layer_set_bitmap(m_spbmLayerW, m_spbmPicWeather);
+    setWeatherIcon();
     layer_add_child(m_sLayerWeather, bitmap_layer_get_layer(m_spbmLayerW));
     layer_set_hidden(m_sLayerWeather, true);
     m_stxtWeather = text_layer_create(GRect(36, 85, textWidth, 60));
@@ -749,6 +770,15 @@ static void deinit() {
     app_message_deregister_callbacks();
     saveConfig();
 #endif
+
+    if (m_spbmPicWeather)
+    {
+        gbitmap_destroy(m_spbmPicWeather);
+    }
+    if (m_spbmPicWeatherDark)
+    {
+        gbitmap_destroy(m_spbmPicWeatherDark);
+    }
 
     window_destroy(window);
 }

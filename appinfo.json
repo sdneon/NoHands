@@ -309,6 +309,251 @@
         "type": "png",
         "name": "WEATHERNA",
         "file": "images/3200.png"
+      },
+      {
+        "type": "png",
+        "name": "WEATHERD00",
+        "file": "images/d0.png"
+      },
+      {
+        "type": "png",
+        "name": "WEATHERD01",
+        "file": "images/d1.png"
+      },
+      {
+        "type": "png",
+        "name": "WEATHERD02",
+        "file": "images/d2.png"
+      },
+      {
+        "type": "png",
+        "name": "WEATHERD03",
+        "file": "images/d3.png"
+      },
+      {
+        "type": "png",
+        "name": "WEATHERD04",
+        "file": "images/d4.png"
+      },
+      {
+        "type": "png",
+        "name": "WEATHERD05",
+        "file": "images/d5.png"
+      },
+      {
+        "type": "png",
+        "name": "WEATHERD06",
+        "file": "images/d6.png"
+      },
+      {
+        "type": "png",
+        "name": "WEATHERD07",
+        "file": "images/d7.png"
+      },
+      {
+        "type": "png",
+        "name": "WEATHERD08",
+        "file": "images/d8.png"
+      },
+      {
+        "type": "png",
+        "name": "WEATHERD09",
+        "file": "images/d9.png"
+      },
+      {
+        "type": "png",
+        "name": "WEATHERD10",
+        "file": "images/d10.png"
+      },
+      {
+        "type": "png",
+        "name": "WEATHERD11",
+        "file": "images/d11.png"
+      },
+      {
+        "type": "png",
+        "name": "WEATHERD12",
+        "file": "images/d12.png"
+      },
+      {
+        "type": "png",
+        "name": "WEATHERD13",
+        "file": "images/d13.png"
+      },
+      {
+        "type": "png",
+        "name": "WEATHERD14",
+        "file": "images/d14.png"
+      },
+      {
+        "type": "png",
+        "name": "WEATHERD15",
+        "file": "images/d15.png"
+      },
+      {
+        "type": "png",
+        "name": "WEATHERD16",
+        "file": "images/d16.png"
+      },
+      {
+        "type": "png",
+        "name": "WEATHERD17",
+        "file": "images/d17.png"
+      },
+      {
+        "type": "png",
+        "name": "WEATHERD18",
+        "file": "images/d18.png"
+      },
+      {
+        "type": "png",
+        "name": "WEATHERD19",
+        "file": "images/d19.png"
+      },
+      {
+        "type": "png",
+        "name": "WEATHERD20",
+        "file": "images/d20.png"
+      },
+      {
+        "type": "png",
+        "name": "WEATHERD21",
+        "file": "images/d21.png"
+      },
+      {
+        "type": "png",
+        "name": "WEATHERD22",
+        "file": "images/d22.png"
+      },
+      {
+        "type": "png",
+        "name": "WEATHERD23",
+        "file": "images/d23.png"
+      },
+      {
+        "type": "png",
+        "name": "WEATHERD24",
+        "file": "images/d24.png"
+      },
+      {
+        "type": "png",
+        "name": "WEATHERD25",
+        "file": "images/d25.png"
+      },
+      {
+        "type": "png",
+        "name": "WEATHERD26",
+        "file": "images/d26.png"
+      },
+      {
+        "type": "png",
+        "name": "WEATHERD27",
+        "file": "images/d27.png"
+      },
+      {
+        "type": "png",
+        "name": "WEATHERD28",
+        "file": "images/d28.png"
+      },
+      {
+        "type": "png",
+        "name": "WEATHERD29",
+        "file": "images/d29.png"
+      },
+      {
+        "type": "png",
+        "name": "WEATHERD30",
+        "file": "images/d30.png"
+      },
+      {
+        "type": "png",
+        "name": "WEATHERD31",
+        "file": "images/d31.png"
+      },
+      {
+        "type": "png",
+        "name": "WEATHERD32",
+        "file": "images/d32.png"
+      },
+      {
+        "type": "png",
+        "name": "WEATHERD33",
+        "file": "images/d33.png"
+      },
+      {
+        "type": "png",
+        "name": "WEATHERD34",
+        "file": "images/d34.png"
+      },
+      {
+        "type": "png",
+        "name": "WEATHERD35",
+        "file": "images/d35.png"
+      },
+      {
+        "type": "png",
+        "name": "WEATHERD36",
+        "file": "images/d36.png"
+      },
+      {
+        "type": "png",
+        "name": "WEATHERD37",
+        "file": "images/d37.png"
+      },
+      {
+        "type": "png",
+        "name": "WEATHERD38",
+        "file": "images/d38.png"
+      },
+      {
+        "type": "png",
+        "name": "WEATHERD39",
+        "file": "images/d39.png"
+      },
+      {
+        "type": "png",
+        "name": "WEATHERD40",
+        "file": "images/d40.png"
+      },
+      {
+        "type": "png",
+        "name": "WEATHERD41",
+        "file": "images/d41.png"
+      },
+      {
+        "type": "png",
+        "name": "WEATHERD42",
+        "file": "images/d42.png"
+      },
+      {
+        "type": "png",
+        "name": "WEATHERD43",
+        "file": "images/d43.png"
+      },
+      {
+        "type": "png",
+        "name": "WEATHERD44",
+        "file": "images/d44.png"
+      },
+      {
+        "type": "png",
+        "name": "WEATHERD45",
+        "file": "images/d45.png"
+      },
+      {
+        "type": "png",
+        "name": "WEATHERD46",
+        "file": "images/d46.png"
+      },
+      {
+        "type": "png",
+        "name": "WEATHERD47",
+        "file": "images/d47.png"
+      },
+      {
+        "type": "png",
+        "name": "WEATHERDNA",
+        "file": "images/d3200.png"
       }
     ]
   }
