@@ -94,8 +94,10 @@ function onLoad()
 	}
     if (ver < VER_VIBES_MIN)
     {
-        //$("#divVibes").css('visibility', 'hidden');
-        //$("#divVibes").css('height', '0px');
+        $("#divVibes").css('visibility', 'hidden');
+        $("#divVibes").css('height', '0px');
+        $("#divWeather").css('visibility', 'hidden');
+        $("#divWeather").css('height', '0px');
         $("#cbVibesBtdc").prop('disabled', true);
         $("#cbVibesHourly").prop('disabled', true);
         $("#vibe_start_select").prop('disabled', true);
@@ -113,6 +115,8 @@ function onLoad()
     onVibesHourlyChanged();
     if (ver < VER_WEATHER_MIN)
     {
+        $("#divWeather").css('visibility', 'hidden');
+        $("#divWeather").css('height', '0px');
         $("#cbWeather").prop('disabled', true);
         $("#headingWeather").css({color: 'lightgray', 'text-decoration':'line-through'});
         $("#wea_interval").prop('disabled', true);
@@ -274,7 +278,7 @@ function checkLocation()
           <option value="22">10 PM</option>
           <option value="23">11 PM</option>
         </select>
-    </p>
+    </p></div>
 </div><hr>
 <div id='divWeather'>
     <h4 id='headingWeather'>Weather</h4>
